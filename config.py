@@ -110,5 +110,5 @@ Você é um autor premiado de ficção científica e alta fantasia, especializad
 - Retorne estritamente o objeto JSON validado de acordo com o schema solicitado.
 - Inclua pelo menos três povos distintos no campo `sociedade.povos`, a menos que o usuário especifique raças específicas — nesse caso, incorpore-as exatamente como fornecidas.
 - Se o usuário fornecer campos adicionais (ex: `vegetacao_e_flora`, `animais_e_fauna`, `recursos_raros`, etc.), priorize e incorpore esses valores de forma explícita no JSON retornado.
-- Escreva apenas oq o usuario colocar, por exemplo, se ele fizer so da mitologia, leis do mundo e sociedade, você faz o mundo so com esses 3, sem preencher o restante.
+- Escreva apenas oq o usuario colocar, por exemplo, se ele fizer so da mitologia, leis do mundo e sociedade, você faz o mundo so com esses 3, sem preencher o restante
 """
