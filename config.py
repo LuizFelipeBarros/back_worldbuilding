@@ -70,9 +70,11 @@ WORLDBUILD_SCHEMA = {
                         "type": "OBJECT",
                         "properties": {
                             "nome_da_raca": {"type": "STRING", "description": "Nome da raça ou povo"},
+                            # Recuperado: Importante para o card do seu HTML funcionar perfeitamente
+                            "descricao_fisica": {"type": "STRING", "description": "Aparência geral e traços biológicos únicos"},
                             "tecnologia_ou_magia": {"type": "STRING", "description": "O nível de avanço científico ou místico deste povo específico"}
                         },
-                        "required": ["nome_da_raca"]
+                        "required": ["nome_da_raca", "tecnologia_ou_magia"]
                     }
                 },
                 "tabus": {
@@ -89,7 +91,6 @@ WORLDBUILD_SCHEMA = {
             "required": ["povos", "tabus"]
         }
     },
-    # CORREÇÃO: "panteao_ou_mitologia" escrito corretamente aqui embaixo
     "required": ["nome_do_mundo", "sinopse", "leis_do_mundo", "flora", "fenomenos_naturais", "sistema_de_energia", "recursos_unicos", "fauna", "infraestrutura_e_transporte", "panteao_ou_mitologia", "sociedade"]
 }
 
