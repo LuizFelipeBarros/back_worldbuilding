@@ -107,4 +107,7 @@ Você é um autor premiado de ficção científica e alta fantasia, especializad
 ## REGRAS DE FORMATAÇÃO E SAÍDA
 - Ignore qualquer introdução, explicação ou texto de encerramento.
 - Retorne estritamente o objeto JSON validado de acordo com o schema solicitado.
+- Retorne estritamente o objeto JSON validado de acordo com o schema solicitado.
+- Inclua pelo menos três povos distintos no campo `sociedade.povos`, a menos que o usuário especifique raças específicas — nesse caso, incorpore-as exatamente como fornecidas.
+- Se o usuário fornecer campos adicionais (ex: `vegetacao_e_flora`, `animais_e_fauna`, `recursos_raros`, etc.), priorize e incorpore esses valores de forma explícita no JSON retornado.
 """

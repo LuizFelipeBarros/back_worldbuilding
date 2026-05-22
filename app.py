@@ -15,10 +15,36 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 app = Flask(__name__)
 CORS(app)
 
-def world_const(instr):
+def world_const(instr, extras=None, racas=None):
     instrucoes = ", ".join(instr)
     conteudo_prompt = f"Crie um mundo obrigatoriamente usando esses itens: {instrucoes}."
-    
+
+    # Ordem e descrições das perguntas extras que podem ser abertas pelo botão ➕
+    extras_order = [
+        ("clima_e_fenomenos", "Clima e Fenômenos (ex: chuvas de luz, ventos que mudam o tempo)"),
+        ("energia_ou_magia", "Energia ou Magia (ex: magia baseada em música, pilhas de cristal)"),
+        ("vegetacao_e_flora", "Vegetação e Flora (ex: florestas de fungos gigantes, plantas elétricas)"),
+        ("animais_e_fauna", "Animais e Fauna (ex: monstros de pedra, baleias voadoras)"),
+        ("recursos_raros", "Recursos Raros (ex: metal que flutua, combustível vivo)"),
+        ("transporte", "Transporte (ex: trens orgânicos, portais de névoa)")
+    ]
+
+    if extras and isinstance(extras, dict):
+        for key, desc in extras_order:
+            val = extras.get(key)
+            if val:
+                conteudo_prompt += f" Considere também {desc}: {val}."
+
+    # Instrução sobre raças: se o usuário forneceu, force a inclusão; caso contrário peça ao modelo para gerar
+    if racas:
+        if isinstance(racas, list):
+            racas_str = ", ".join(racas)
+        else:
+            racas_str = str(racas)
+        conteudo_prompt += f" Inclua explicitamente as raças/tribos a seguir em sociedade.povos: {racas_str}."
+    else:
+        conteudo_prompt += " Inclua pelo menos três povos distintos no campo sociedade.povos, a menos que o usuário especifique raças específicas."
+
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=conteudo_prompt,
@@ -50,11 +76,13 @@ def generate():
         }), 400
         
     pedidos = data.get("pedidos", [])
-    
-    if not isinstance(pedidos, list) or len(pedidos) < 3:
+    extras = data.get("extras", {})
+    racas = data.get("racas", None)
+
+    if not isinstance(pedidos, list) or len(pedidos) < 1:
         return jsonify({
             "status": "error",
-            "message": "Você precisa fornecer no mínimo 3 pedidos."
+            "message": "Você precisa fornecer ao menos 1 pedido."
         }), 400
     
     try:
