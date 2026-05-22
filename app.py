@@ -6,45 +6,37 @@ from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-from config import WORLDBUILD_SCHEMA, SYSTEM_INSTRUCTION
+from config import WORLDBUILD_SCHEMA, SYSTEM_INSTRUCTION, EXTRA_QUESTION_ORDER
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-app = Flask(__name__)
-CORS(app)
-
-def world_const(instr, extras=None, racas=None):
+def build_world_prompt(instr, extras=None):
     instrucoes = ", ".join(instr)
     conteudo_prompt = f"Crie um mundo obrigatoriamente usando esses itens: {instrucoes}."
 
-    # Ordem e descrições das perguntas extras que podem ser abertas pelo botão ➕
-    extras_order = [
-        ("clima_e_fenomenos", "Clima e Fenômenos (ex: chuvas de luz, ventos que mudam o tempo)"),
-        ("energia_ou_magia", "Energia ou Magia (ex: magia baseada em música, pilhas de cristal)"),
-        ("vegetacao_e_flora", "Vegetação e Flora (ex: florestas de fungos gigantes, plantas elétricas)"),
-        ("animais_e_fauna", "Animais e Fauna (ex: monstros de pedra, baleias voadoras)"),
-        ("recursos_raros", "Recursos Raros (ex: metal que flutua, combustível vivo)"),
-        ("transporte", "Transporte (ex: trens orgânicos, portais de névoa)")
-    ]
-
     if extras and isinstance(extras, dict):
-        for key, desc in extras_order:
-            val = extras.get(key)
-            if val:
-                conteudo_prompt += f" Considere também {desc}: {val}."
+        detalhes = []
+        for key, label in EXTRA_QUESTION_ORDER:
+            value = extras.get(key)
+            if value:
+                if isinstance(value, list):
+                    value = "; ".join(str(item) for item in value if item)
+                detalhes.append(f"{label}: {value}")
 
-    # Instrução sobre raças: se o usuário forneceu, force a inclusão; caso contrário peça ao modelo para gerar
-    if racas:
-        if isinstance(racas, list):
-            racas_str = ", ".join(racas)
-        else:
-            racas_str = str(racas)
-        conteudo_prompt += f" Inclua explicitamente as raças/tribos a seguir em sociedade.povos: {racas_str}."
-    else:
-        conteudo_prompt += " Inclua pelo menos três povos distintos no campo sociedade.povos, a menos que o usuário especifique raças específicas."
+        if detalhes:
+            conteudo_prompt += " Use também estes detalhes adicionais como sementes criativas: " + " ".join(detalhes) + "."
 
+    conteudo_prompt += (
+        " Se algum aspecto não foi especificado, invente-o de forma criativa "
+        "e coerente para preencher todas as chaves exigidas no JSON."
+    )
+    return conteudo_prompt
+
+
+def world_const(instr, extras=None):
+    conteudo_prompt = build_world_prompt(instr, extras)
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=conteudo_prompt,
@@ -55,6 +47,9 @@ def world_const(instr, extras=None, racas=None):
         )
     )
     return response.text
+
+app = Flask(__name__)
+CORS(app)
 
 @app.route("/")
 def root():
@@ -76,22 +71,28 @@ def generate():
         }), 400
         
     pedidos = data.get("pedidos", [])
-    extras = data.get("extras", {})
-    racas = data.get("racas", None)
-
-    if not isinstance(pedidos, list) or len(pedidos) < 1:
+    detalhes = data.get("detalhes", {})
+    
+    if not isinstance(pedidos, list) or len(pedidos) < 3:
         return jsonify({
             "status": "error",
-            "message": "Você precisa fornecer ao menos 1 pedido."
+            "message": "Você precisa fornecer no mínimo 3 pedidos."
+        }), 400
+
+    if detalhes and not isinstance(detalhes, dict):
+        return jsonify({
+            "status": "error",
+            "message": "Os detalhes adicionais devem ser enviados como um objeto JSON."
         }), 400
     
     try:
-        mundo_json_string = world_const(pedidos)
+        mundo_json_string = world_const(pedidos, detalhes)
         world_build = json.loads(mundo_json_string)
         
         return jsonify({
             "status": "success",
             "pedidos_enviados": pedidos,
+            "detalhes_enviados": detalhes,
             "dados_historia": world_build
         }), 200
         
