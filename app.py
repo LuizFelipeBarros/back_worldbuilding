@@ -15,7 +15,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 app = Flask(__name__)
 CORS(app)
 
-def world_const(instr, extras=None, racas=None):
+def world_const(instr, extras=None, racas=None, requested_fields=None):
     instrucoes = ", ".join(instr)
     conteudo_prompt = f"Crie um mundo obrigatoriamente usando esses itens: {instrucoes}."
 
@@ -45,13 +45,26 @@ def world_const(instr, extras=None, racas=None):
     else:
         conteudo_prompt += " Inclua pelo menos três povos distintos no campo sociedade.povos, a menos que o usuário especifique raças específicas."
 
+    # Se o front-end solicitou campos específicos, instrua o modelo a retornar apenas esses campos
+    schema_to_send = WORLDBUILD_SCHEMA
+    if requested_fields and isinstance(requested_fields, (list, set)) and len(requested_fields) > 0:
+        campos = set(requested_fields)
+        subset_properties = {k: v for k, v in WORLDBUILD_SCHEMA["properties"].items() if k in campos}
+        schema_to_send = {
+            "type": "OBJECT",
+            "properties": subset_properties,
+            "required": [k for k in requested_fields if k in subset_properties]
+        }
+        campos_list = ", ".join(list(campos))
+        conteudo_prompt += f" Retorne estritamente um objeto JSON contendo apenas os campos: {campos_list}. Não inclua campos não solicitados."
+
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=conteudo_prompt,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_INSTRUCTION,
             response_mime_type="application/json",
-            response_schema=WORLDBUILD_SCHEMA,
+            response_schema=schema_to_send,
         )
     )
     return response.text
@@ -79,6 +92,31 @@ def generate():
     extras = data.get("extras", {})
     racas = data.get("racas", None)
 
+    # Detectar quais campos top-level o usuário forneceu explicitamente
+    provided_fields = set()
+    schema_props = WORLDBUILD_SCHEMA.get("properties", {})
+    for key in schema_props.keys():
+        if key in data and data.get(key):
+            provided_fields.add(key)
+
+    # Mapear extras para propriedades do schema
+    extras_map = {
+        "clima_e_fenomenos": "fenomenos_naturais",
+        "energia_ou_magia": "sistema_de_energia",
+        "vegetacao_e_flora": "flora",
+        "animais_e_fauna": "fauna",
+        "recursos_raros": "recursos_unicos",
+        "transporte": "infraestrutura_e_transporte"
+    }
+    if isinstance(extras, dict):
+        for k, v in extras.items():
+            mapped = extras_map.get(k)
+            if mapped and v:
+                provided_fields.add(mapped)
+
+    if racas:
+        provided_fields.add("sociedade")
+
     if not isinstance(pedidos, list) or len(pedidos) < 1:
         return jsonify({
             "status": "error",
@@ -86,7 +124,9 @@ def generate():
         }), 400
     
     try:
-        mundo_json_string = world_const(pedidos)
+        # Se foram especificados campos, passe-os para que o modelo retorne somente esses
+        requested = list(provided_fields) if len(provided_fields) > 0 else None
+        mundo_json_string = world_const(pedidos, extras=extras, racas=racas, requested_fields=requested)
         world_build = json.loads(mundo_json_string)
         
         return jsonify({
