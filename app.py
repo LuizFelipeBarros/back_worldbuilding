@@ -28,10 +28,6 @@ def build_world_prompt(instr, extras=None):
         if detalhes:
             conteudo_prompt += " Use também estes detalhes adicionais como sementes criativas: " + " ".join(detalhes) + "."
 
-    conteudo_prompt += (
-        " Se algum aspecto não foi especificado, invente-o de forma criativa "
-        "e coerente para preencher todas as chaves exigidas no JSON."
-    )
     return conteudo_prompt
 
 
